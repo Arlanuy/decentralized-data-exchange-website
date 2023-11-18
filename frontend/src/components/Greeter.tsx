@@ -11,6 +11,8 @@ import styled from 'styled-components';
 import GreeterArtifact from '../artifacts/contracts/Greeter.sol/Greeter.json';
 import { Provider } from '../utils/provider';
 import { SectionDivider } from './SectionDivider';
+import { request } from 'http';
+
 
 const StyledDeployContractButton = styled.button`
   width: 180px;
@@ -56,6 +58,26 @@ export function Greeter(): ReactElement {
   const [greeterContractAddr, setGreeterContractAddr] = useState<string>('');
   const [greeting, setGreeting] = useState<string>('');
   const [greetingInput, setGreetingInput] = useState<string>('');
+  const [url, setUrl] = useState("");//("https://i.imgur.com/WWoHKO8.jpg");
+  const [actualImageFileData, setActualImageFileData] = useState<any>();
+  const [requestBounty, setRequestBounty] = useState<string>();
+
+  const showFile = async (e: any) => {
+    e.preventDefault()
+    const reader = new FileReader()
+    let text: any = null;
+    reader.onload = async (e: any) => { 
+       text = (e.target.result)
+      alert(text.base64)
+      setGreeting(text)
+    };
+    reader.readAsText(e.target.files[0])
+    if (text) {
+      setActualImageFileData(text.base64);
+    }
+
+  }
+
 
   useEffect((): void => {
     if (!library) {
@@ -82,6 +104,8 @@ export function Greeter(): ReactElement {
     getGreeting(greeterContract);
   }, [greeterContract, greeting]);
 
+
+
   function handleDeployContract(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
 
@@ -98,7 +122,7 @@ export function Greeter(): ReactElement {
       );
 
       try {
-        const greeterContract = await Greeter.deploy('Hello, Hardhat!');
+        const greeterContract = await Greeter.deploy(url);
 
         await greeterContract.deployed();
 
@@ -133,8 +157,8 @@ export function Greeter(): ReactElement {
       return;
     }
 
-    if (!greetingInput) {
-      window.alert('Greeting cannot be empty');
+    if (!greeting) {
+      window.alert('Bounty data cannot be empty');
       return;
     }
 
@@ -160,6 +184,42 @@ export function Greeter(): ReactElement {
     submitGreeting(greeterContract);
   }
 
+  function handleGreetingRequest(event: MouseEvent<HTMLButtonElement>): void {
+    event.preventDefault();
+
+    if (!greeterContract) {
+      window.alert('Undefined greeterContract');
+      return;
+    }
+
+    if (!greetingInput) {
+      window.alert('Greeting cannot be empty');
+      return;
+    }
+
+    async function submitRequest(greeterContract: Contract): Promise<void> {
+      try {
+        const setGreetingTxn = await greeterContract.setGreeting(greetingInput);
+
+        await setGreetingTxn.wait();
+
+        const newGreeting = await greeterContract.greet();
+        window.alert(`Success!\n\nGreeting is now: ${newGreeting}`);
+
+        if (newGreeting !== greeting) {
+          setRequestBounty(newGreeting);
+        }
+      } catch (error: any) {
+        window.alert(
+          'Error!' + (error && error.message ? `\n\n${error.message}` : '')
+        );
+      }
+    }
+
+    submitRequest(greeterContract);
+  }
+
+
   return (
     <>
       <StyledDeployContractButton
@@ -170,7 +230,7 @@ export function Greeter(): ReactElement {
         }}
         onClick={handleDeployContract}
       >
-        Deploy Greeter Contract
+        Deploy Data Bounty Contract
       </StyledDeployContractButton>
       <SectionDivider />
       <StyledGreetingDiv>
@@ -184,20 +244,23 @@ export function Greeter(): ReactElement {
         </div>
         {/* empty placeholder div below to provide empty first row, 3rd col div for a 2x3 grid */}
         <div></div>
-        <StyledLabel>Current greeting</StyledLabel>
+        <StyledLabel>Current image link: </StyledLabel>
         <div>
-          {greeting ? greeting : <em>{`<Contract not yet deployed>`}</em>}
+          {actualImageFileData ? actualImageFileData : <em>{`<Contract not yet deployed>`}</em>}
         </div>
         {/* empty placeholder div below to provide empty first row, 3rd col div for a 2x3 grid */}
         <div></div>
-        <StyledLabel htmlFor="greetingInput">Set new greeting</StyledLabel>
-        <StyledInput
-          id="greetingInput"
-          type="text"
-          placeholder={greeting ? '' : '<Contract not yet deployed>'}
-          onChange={handleGreetingChange}
-          style={{ fontStyle: greeting ? 'normal' : 'italic' }}
-        ></StyledInput>
+        <StyledLabel htmlFor="greetingImage">Set new image</StyledLabel>
+        <img src={url} width='30px' height='20pxS'></img>
+        
+        <i className="fa fa-instagram" aria-hidden="true"></i>
+        <input type="file" 
+          id="greetingImage"
+          onChange={(e: any) => showFile(e)}
+        >
+
+        </input>
+        
         <StyledButton
           disabled={!active || !greeterContract ? true : false}
           style={{
@@ -206,8 +269,30 @@ export function Greeter(): ReactElement {
           }}
           onClick={handleGreetingSubmit}
         >
-          Submit
+          Submit Bounty
         </StyledButton>
+
+        <div style={{textAlign: "right"}}>
+        <StyledLabel>Enter your bounty request here </StyledLabel>
+        <StyledInput
+          id="greetingInput"
+          type="text"
+          placeholder={greetingInput ? '' : 'Enter bounty request'}
+          onChange={handleGreetingChange}
+          style={{ fontStyle: greetingInput ? 'normal' : 'italic' }}
+        ></StyledInput>
+
+          <StyledButton
+          disabled={greetingInput === null || greetingInput === ""}
+          style={{
+            cursor: (greetingInput === null || greetingInput === "") ? 'not-allowed' : 'pointer',
+            borderColor: (greetingInput === null || greetingInput === "") ? 'unset' : 'blue'
+          }}
+          onClick={handleGreetingRequest}
+        >
+          Request Bounty
+        </StyledButton>
+        </div>
       </StyledGreetingDiv>
     </>
   );
